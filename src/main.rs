@@ -28,7 +28,7 @@ fn main() {
 fn checkPrimesInRange( start : u32, end : u32 ) {
     let mut current_suspect = 1u32;
 
-    for x in start..end {
+    for x in (start+1)..=end {
         let prime_check_resoult = checkIfPrime(x);
         println!("Number {} is {} a prime!{}", x, if prime_check_resoult.0 {""} else {"not"}, if prime_check_resoult.0 {"".to_string()} else {format!("\n !and! it has {} dividers which are:{:?}", prime_check_resoult.1, prime_check_resoult.2)});
     }
@@ -45,3 +45,6 @@ fn checkIfPrime( suspect: u32) -> (bool, usize, Vec<u32>) {
 
     (divider.len() == 0, divider.len(), divider)
 }
+
+// Columna for the end file
+//    | The Number | IsPrime | NumOfDivders | Dividers Array |
