@@ -1,11 +1,11 @@
 use std::thread;
-
+#[derive(Clone)]
 pub struct PrimesCalcSettings{
     pub RANGE_LIMIT_BOTTOM: u32,
     pub RANGE_LIMIT_TOP: u32,
     pub THREAD_RECORDS_LIMIT: u32,
     num_of_threads: u32,
-    current_thread: u32,
+    //current_thread: u32,
     threads_to_handle: Vec<thread::JoinHandle<()>>,
     results: Vec<(u32,Vec<u32>,bool)>
 }
@@ -28,13 +28,26 @@ impl PrimesCalcSettings{
         self.RANGE_LIMIT_TOP = RANGE_LIMIT_TOP;
         self.THREAD_RECORDS_LIMIT = THREAD_RECORDS_LIMIT;
         self.num_of_threads = (self.RANGE_LIMIT_TOP-self.RANGE_LIMIT_BOTTOM)/self.THREAD_RECORDS_LIMIT;
-        self.current_thread = 0;
+        //self.current_thread = 0;
         self.threads_to_handle = Vec::new();
         self.results = Vec::new();
     }
 
     pub fn do_calc(&mut self) {
+        let mut current_thread = 0;
+        let vec_threads: &mut Vec<thread::JoinHandle<()>> = &mut self.threads_to_handle;
+        let thread_records_limit = self.THREAD_RECORDS_LIMIT;
 
+        while current_thread<self.num_of_threads {
+            vec_threads.push( thread::spawn(move || {
+                PrimesCalcSettings::checkPrimesInRange(current_thread*thread_records_limit, (current_thread+1)*thread_records_limit);
+            }));
+
+            current_thread += 1;
+        }
+    
+
+        self.threads_to_handle.into_iter().for_each(|single_thread| { single_thread.join().unwrap() } );
     }
 
     // Remeber to fix this
