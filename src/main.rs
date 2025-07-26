@@ -1,3 +1,4 @@
+mod prime_calc;
 use std::thread;
 
 fn main() {
@@ -7,7 +8,7 @@ fn main() {
     const THREAD_RECORDS: u32 = 5000;
     //
 
-    let mut num_of_threads = RANGE_LIMIT/THREAD_RECORDS;
+    let num_of_threads = RANGE_LIMIT/THREAD_RECORDS;
     let mut current_thread = 0;
 
     let mut threads_to_handle = Vec::new();
@@ -48,3 +49,7 @@ fn checkIfPrime( suspect: u32) -> (bool, usize, Vec<u32>) {
 
 // Columna for the end file
 //    | The Number | IsPrime | NumOfDivders | Dividers Array |
+
+fn build_line_for_writer( single_line: (u32,bool, usize, Vec<u32>) ) -> String {
+    "text".to_string()
+}
