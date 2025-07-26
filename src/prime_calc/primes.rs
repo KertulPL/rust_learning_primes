@@ -1,5 +1,4 @@
 use std::thread;
-#[derive(Clone)]
 pub struct PrimesCalcSettings{
     pub RANGE_LIMIT_BOTTOM: u32,
     pub RANGE_LIMIT_TOP: u32,
@@ -33,35 +32,38 @@ impl PrimesCalcSettings{
         self.results = Vec::new();
     }
 
-    pub fn do_calc(&mut self) {
+    pub fn start_calc(&mut self) {
         let mut current_thread = 0;
-        let vec_threads: &mut Vec<thread::JoinHandle<()>> = &mut self.threads_to_handle;
-        let thread_records_limit = self.THREAD_RECORDS_LIMIT;
+        {
+            let vec_threads: &mut Vec<thread::JoinHandle<()>> = &mut self.threads_to_handle;
+            let thread_records_limit = self.THREAD_RECORDS_LIMIT;
 
-        while current_thread<self.num_of_threads {
-            vec_threads.push( thread::spawn(move || {
-                PrimesCalcSettings::checkPrimesInRange(current_thread*thread_records_limit, (current_thread+1)*thread_records_limit);
-            }));
+            while current_thread<self.num_of_threads {
+                vec_threads.push( thread::spawn(move || {
+                    PrimesCalcSettings::check_primes_in_range(current_thread*thread_records_limit, (current_thread+1)*thread_records_limit);
+                }));
 
-            current_thread += 1;
+                current_thread += 1;
+            }
         }
-    
 
-        self.threads_to_handle.into_iter().for_each(|single_thread| { single_thread.join().unwrap() } );
+        for single_thread in &mut self.threads_to_handle.drain(..) {
+            single_thread.join().unwrap();
+        }
     }
 
     // Remeber to fix this
-    fn checkPrimesInRange( start : u32, end : u32, ) {
+    fn check_primes_in_range( start : u32, end : u32, ) {
         let mut current_suspect = 1u32;
 
         for x in (start+1)..=end {
-            let prime_check_resoult = PrimesCalcSettings::checkIfPrime(x);
+            let prime_check_resoult = PrimesCalcSettings::check_if_prime(x);
             println!("Number {} is {} a prime!{}", x, if prime_check_resoult.0 {""} else {"not"}, if prime_check_resoult.0 {"".to_string()} else {format!("\n !and! it has {} dividers which are:{:?}", prime_check_resoult.1, prime_check_resoult.2)});
         }
     }
 
     // Remeber to fix this
-    fn checkIfPrime( suspect: u32) -> (bool, usize, Vec<u32>) {
+    fn check_if_prime( suspect: u32) -> (bool, usize, Vec<u32>) {
         let mut dividers : Vec<u32> = Vec::new();
 
         for n in 2..suspect {
