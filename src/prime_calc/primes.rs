@@ -18,6 +18,12 @@ impl PrimeResult{
     pub fn is_prime(&self) -> bool {
         self.dividers.len() == 1
     }
+    pub fn init( the_prime: u32, dividers: Vec<u32>) -> Self {
+        Self{
+            the_prime,
+            dividers
+        }
+    }
 }
 
 impl PrimesCalcSettings{
@@ -61,12 +67,12 @@ impl PrimesCalcSettings{
 
         for x in (start+1)..=end {
             let prime_check_resoult = PrimesCalcSettings::check_if_prime(x);
-            println!("Number {} is {} a prime!{}", x, if prime_check_resoult.0 {""} else {"not"}, if prime_check_resoult.0 {"".to_string()} else {format!("\n !and! it has {} dividers which are:{:?}", prime_check_resoult.1, prime_check_resoult.2)});
+            println!("Number {} is {} a prime!{}", x, if prime_check_resoult.is_prime() {""} else {"not"}, if prime_check_resoult.is_prime() {"".to_string()} else {format!("\n !and! it has {} dividers which are:{:?}", prime_check_resoult.dividers.len(), prime_check_resoult.dividers)});
         }
     }
 
     // Remeber to fix this
-    fn check_if_prime( suspect: u32) -> (bool, usize, Vec<u32>) {
+    fn check_if_prime( suspect: u32) -> PrimeResult { //(bool, usize, Vec<u32>) {
         let mut dividers : Vec<u32> = Vec::new();
 
         for n in 2..suspect {
@@ -75,6 +81,7 @@ impl PrimesCalcSettings{
             }
         }
 
-        (dividers.len() == 0, dividers.len(), dividers)
+        //(dividers.len() == 0, dividers.len(), dividers)
+        PrimeResult::init( suspect, dividers )
     }
 }
