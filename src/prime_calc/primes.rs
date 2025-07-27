@@ -4,7 +4,6 @@ pub struct PrimesCalcSettings{
     pub RANGE_LIMIT_TOP: u32,
     pub THREAD_RECORDS_LIMIT: u32,
     num_of_threads: u32,
-    //current_thread: u32,
     threads_to_handle: Vec<thread::JoinHandle<()>>,
     results: Vec<(u32,Vec<u32>,bool)>
 }
@@ -22,14 +21,18 @@ impl PrimeResult{
 }
 
 impl PrimesCalcSettings{
-    pub fn init(&mut self, RANGE_LIMIT_BOTTOM: u32, RANGE_LIMIT_TOP: u32, THREAD_RECORDS_LIMIT: u32) {
-        self.RANGE_LIMIT_BOTTOM = RANGE_LIMIT_BOTTOM;
-        self.RANGE_LIMIT_TOP = RANGE_LIMIT_TOP;
-        self.THREAD_RECORDS_LIMIT = THREAD_RECORDS_LIMIT;
-        self.num_of_threads = (self.RANGE_LIMIT_TOP-self.RANGE_LIMIT_BOTTOM)/self.THREAD_RECORDS_LIMIT;
-        //self.current_thread = 0;
-        self.threads_to_handle = Vec::new();
-        self.results = Vec::new();
+    pub fn init(RANGE_LIMIT_BOTTOM: u32, RANGE_LIMIT_TOP: u32, THREAD_RECORDS_LIMIT: u32) -> Self {
+
+        let num_of_threads = (RANGE_LIMIT_TOP-RANGE_LIMIT_BOTTOM)/THREAD_RECORDS_LIMIT;
+
+        Self{
+            RANGE_LIMIT_BOTTOM,
+            RANGE_LIMIT_TOP,
+            THREAD_RECORDS_LIMIT,
+            num_of_threads,
+            threads_to_handle: Vec::new(),
+            results: Vec::new(),
+        }
     }
 
     pub fn start_calc(&mut self) {
