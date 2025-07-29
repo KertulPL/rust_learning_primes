@@ -1,5 +1,4 @@
 mod prime_calc;
-use std::thread;
 
 fn main() {
 
@@ -7,9 +6,4 @@ fn main() {
 
     prime_calculation.start_calc();
     
-}
-
-
-fn build_line_for_writer( single_line: (u32,bool, usize, Vec<u32>) ) -> String {
-    "text".to_string()
 }

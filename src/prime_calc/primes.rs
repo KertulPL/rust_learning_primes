@@ -10,7 +10,7 @@ pub struct PrimesCalcSettings{
 
 // Will use this later instead of tuple
 pub struct PrimeResult{
-    pub the_prime: u32,
+    pub the_suspect: u32,
     pub dividers: Vec<u32>,
 }
 
@@ -18,11 +18,30 @@ impl PrimeResult{
     pub fn is_prime(&self) -> bool {
         self.dividers.len() == 1
     }
-    pub fn init( the_prime: u32, dividers: Vec<u32>) -> Self {
+    pub fn init( the_suspect: u32, dividers: Vec<u32>) -> Self {
         Self{
-            the_prime,
+            the_suspect,
             dividers
         }
+    }
+}
+
+pub struct PrimesResults{
+    pub p_results: Vec<PrimeResult>,
+    // Zmienne do statystyk
+    pub prime_distances: Vec<u32>,
+
+}
+
+impl PrimesResults{
+    pub fn init( p_results: Vec<PrimeResult> ) -> Self {
+        Self {
+            p_results,
+            prime_distances: Vec::new(),
+        }
+    }
+    pub fn calculate_distances(&mut self) {
+
     }
 }
 
@@ -84,4 +103,10 @@ impl PrimesCalcSettings{
         //(dividers.len() == 0, dividers.len(), dividers)
         PrimeResult::init( suspect, dividers )
     }
+
+    
+    pub fn build_line_for_writer( single_line: PrimeResult ) -> String {
+        "text".to_string()
+    }
+
 }
