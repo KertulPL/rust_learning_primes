@@ -5,7 +5,7 @@ pub struct PrimesCalcSettings{
     pub THREAD_RECORDS_LIMIT: u32,
     num_of_threads: u32,
     threads_to_handle: Vec<thread::JoinHandle<()>>,
-    results: Vec<(u32,Vec<u32>,bool)>
+    pub results: PrimesResults
 }
 
 // Will use this later instead of tuple
@@ -16,7 +16,7 @@ pub struct PrimeResult{
 
 impl PrimeResult{
     pub fn is_prime(&self) -> bool {
-        self.dividers.len() == 1
+        self.dividers.len() == 0
     }
     pub fn init( the_suspect: u32, dividers: Vec<u32>) -> Self {
         Self{
@@ -29,20 +29,45 @@ impl PrimeResult{
 pub struct PrimesResults{
     pub p_results: Vec<PrimeResult>,
     // Zmienne do statystyk
-    pub prime_distances: Vec<u32>,
+    pub prime_distances: Vec<Distance>,
 
 }
 
 impl PrimesResults{
-    pub fn init( p_results: Vec<PrimeResult> ) -> Self {
+    pub fn init() -> Self {
         Self {
-            p_results,
+            p_results: Vec::new(),
             prime_distances: Vec::new(),
         }
     }
-    pub fn calculate_distances(&mut self) {
-
+    pub fn add( &mut self, single_result: PrimeResult ) {
+        self.p_results.push(single_result);
     }
+    pub fn add_all( &mut self, all_result:&mut Vec<PrimeResult> ) {
+        self.p_results.append(all_result);
+    }
+    pub fn calculate_distances(&mut self) {
+        let mut single_distance = None;
+        let mut last_prime_index = None;
+
+        for i in 0..self.p_results.len() {
+            let suspect = &self.p_results[i];
+            if suspect.is_prime() {
+                if single_distance != None && last_prime_index!= None { self.prime_distances.push( Distance{ prime_index: last_prime_index.unwrap(), distance_to_last: single_distance.unwrap() } ); }
+                single_distance = Some(0);
+                last_prime_index = Some(i);
+            }
+            single_distance = Some(single_distance.unwrap()+1);
+        }
+
+        println!("Distances: {:?}", self.prime_distances);
+    }
+}
+
+#[derive(Debug)]
+pub struct Distance{
+    pub prime_index: usize,
+    pub distance_to_last: usize,
 }
 
 impl PrimesCalcSettings{
@@ -56,7 +81,7 @@ impl PrimesCalcSettings{
             THREAD_RECORDS_LIMIT,
             num_of_threads,
             threads_to_handle: Vec::new(),
-            results: Vec::new(),
+            results: PrimesResults::init(),
         }
     }
 
@@ -67,7 +92,7 @@ impl PrimesCalcSettings{
             let thread_records_limit = self.THREAD_RECORDS_LIMIT;
 
             while current_thread<self.num_of_threads {
-                vec_threads.push( thread::spawn(move || {
+                vec_threads.push( thread::spawn(move || { // Jak toteraz wyciągnąć z tąd xD
                     PrimesCalcSettings::check_primes_in_range(current_thread*thread_records_limit, (current_thread+1)*thread_records_limit);
                 }));
 
@@ -81,13 +106,16 @@ impl PrimesCalcSettings{
     }
 
     // Remeber to fix this
-    fn check_primes_in_range( start : u32, end : u32, ) {
-        let mut current_suspect = 1u32;
+    fn check_primes_in_range( start : u32, end : u32, ) -> Vec<PrimeResult> {
+        let mut results_vec = Vec::new();
 
         for x in (start+1)..=end {
             let prime_check_resoult = PrimesCalcSettings::check_if_prime(x);
             println!("Number {} is {} a prime!{}", x, if prime_check_resoult.is_prime() {""} else {"not"}, if prime_check_resoult.is_prime() {"".to_string()} else {format!("\n !and! it has {} dividers which are:{:?}", prime_check_resoult.dividers.len(), prime_check_resoult.dividers)});
+            results_vec.push( prime_check_resoult );
         }
+
+        results_vec
     }
 
     // Remeber to fix this
