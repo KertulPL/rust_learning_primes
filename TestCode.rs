@@ -1,110 +1,125 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use once_cell::sync::OnceCell;
+use parking_lot::Mutex;
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, MouseButton, WindowEvent},
+    event::WindowEvent,
     event_loop::{ActiveEventLoop, EventLoop},
+    keyboard::{Key, NamedKey},
     window::{Window, WindowAttributes, WindowId},
 };
-
-static WINDOW: OnceCell<Window> = OnceCell::new();
 
 const BUF_W: u32 = 320;
 const BUF_H: u32 = 240;
 
+// GLOBAL: Window store (id -> Arc<Window>)
+static WINDOWS: OnceCell<Mutex<HashMap<WindowId, Arc<Window>>>> = OnceCell::new();
+
 struct App {
-    window_id: Option<WindowId>,
-    pixels: Option<Pixels<'static>>,
-    // Persistent canvas so clicks remain drawn:
-    canvas: Vec<u8>, // RGBA, size = BUF_W * BUF_H * 4
-    // Last known cursor position in physical pixels:
-    last_cursor: (f64, f64),
+    // Persistent renderers per window (no borrows → 'static)
+    pixels_by_id: HashMap<WindowId, Pixels<'static>>,
 }
 
 impl Default for App {
     fn default() -> Self {
-        Self {
-            window_id: None,
-            pixels: None,
-            canvas: vec![0; (BUF_W * BUF_H * 4) as usize], // black
-            last_cursor: (0.0, 0.0),
+        WINDOWS.set(Mutex::new(HashMap::new())).ok(); // ignore if already set on resume
+        Self { pixels_by_id: HashMap::new() }
+    }
+}
+
+impl App {
+    fn create_window(&mut self, el: &ActiveEventLoop, title: &str) -> WindowId {
+        // 1) Create a Window
+        let window = el
+            .create_window(
+                WindowAttributes::default()
+                    .with_title(title)
+                    .with_inner_size(LogicalSize::new((BUF_W * 2) as f64, (BUF_H * 2) as f64)),
+            )
+            .expect("create window");
+        let id = window.id();
+
+        // 2) Store it globally as Arc<Window>
+        let win_arc = Arc::new(window);
+        WINDOWS.get().unwrap().lock().insert(id, win_arc.clone());
+
+        // 3) Build a SurfaceTexture using OWNED handle (Arc<Window>)
+        let size = win_arc.inner_size();
+        let surface = SurfaceTexture::new(size.width, size.height, win_arc);
+
+        // 4) Create persistent Pixels<'static> (no lifetime pain)
+        let px = Pixels::new(BUF_W, BUF_H, surface).expect("create pixels");
+        self.pixels_by_id.insert(id, px);
+
+        // 5) Kick first redraw
+        if let Some(win) = WINDOWS.get().unwrap().lock().get(&id) {
+            win.request_redraw();
         }
+        id
+    }
+
+    fn destroy_window(&mut self, id: WindowId) {
+        // Drop Pixels first
+        self.pixels_by_id.remove(&id);
+        // Remove Window from global map
+        WINDOWS.get().unwrap().lock().remove(&id);
     }
 }
 
 impl ApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // Create window and stash globally
-        let window = event_loop
-            .create_window(
-                WindowAttributes::default()
-                    .with_title("Click to light a pixel (white)")
-                    .with_inner_size(LogicalSize::new(BUF_W as f64 * 2.0, BUF_H as f64 * 2.0)),
-            )
-            .expect("create window");
-        self.window_id = Some(window.id());
-        let _ = WINDOW.set(window);
-
-        // Hook up pixels to window
-        let win = WINDOW.get().expect("window set");
-        let size = win.inner_size(); // physical size
-        let surface = SurfaceTexture::new(size.width, size.height, win);
-        let px = Pixels::new(BUF_W, BUF_H, surface).expect("create pixels");
-        self.pixels = Some(px);
-
-        // First redraw
-        win.request_redraw();
+    fn resumed(&mut self, el: &ActiveEventLoop) {
+        if self.pixels_by_id.is_empty() {
+            self.create_window(el, "Window 1");
+            self.create_window(el, "Window 2");
+        }
     }
 
     fn window_event(
         &mut self,
         el: &ActiveEventLoop,
-        window_id: WindowId,
+        id: WindowId,
         event: WindowEvent,
     ) {
-        if Some(window_id) != self.window_id {
-            return;
-        }
-
         match event {
-            WindowEvent::CloseRequested => el.exit(),
-
-            WindowEvent::CursorMoved { position, .. } => {
-                self.last_cursor = (position.x, position.y); // physical coords
+            WindowEvent::CloseRequested => {
+                self.destroy_window(id);
+                if self.pixels_by_id.is_empty() {
+                    el.exit();
+                }
             }
 
-            WindowEvent::MouseInput { state, button, .. } => {
-                if state == ElementState::Pressed {
-                    if matches!(button, MouseButton::Left | MouseButton::Right | MouseButton::Middle)
-                    {
-                        // Map physical cursor coords -> buffer coords
-                        if let Some(win) = WINDOW.get() {
-                            let size = win.inner_size(); // physical size of surface
-                            let (px, py) = self.last_cursor;
-                            if size.width > 0 && size.height > 0 {
-                                let x = ((px / size.width as f64) * BUF_W as f64) as i32;
-                                let y = ((py / size.height as f64) * BUF_H as f64) as i32;
-                                self.set_pixel(x, y, [255, 255, 255, 255]); // white
-                                win.request_redraw();
-                            }
-                        }
+            WindowEvent::Resized(sz) => {
+                if let Some(p) = self.pixels_by_id.get_mut(&id) {
+                    p.resize_surface(sz.width, sz.height);
+                }
+            }
+
+            WindowEvent::KeyboardInput { event, .. } => {
+                // Press 'N' to spawn a new window at runtime
+                if event.logical_key == Key::Character("n".into()) {
+                    let n = self.pixels_by_id.len() + 1;
+                    self.create_window(el, &format!("Window {}", n));
+                }
+                // ESC: close this window
+                if event.logical_key == Key::Named(NamedKey::Escape) {
+                    self.destroy_window(id);
+                    if self.pixels_by_id.is_empty() {
+                        el.exit();
                     }
                 }
             }
 
-            WindowEvent::Resized(size) => {
-                // Keep logical buffer the same; just resize the surface
-                if let Some(p) = self.pixels.as_mut() {
-                    p.resize_surface(size.width, size.height);
-                }
-            }
-
             WindowEvent::RedrawRequested => {
-                if let Some(pixels) = self.pixels.as_mut() {
-                    // Copy persistent canvas into this frame and present
+                if let Some(pixels) = self.pixels_by_id.get_mut(&id) {
+                    // Fill frame (black)
                     let frame = pixels.get_frame();
-                    frame.copy_from_slice(&self.canvas);
+                    for px in frame.chunks_exact_mut(4) {
+                        px.copy_from_slice(&[0, 0, 0, 255]);
+                    }
                     pixels.render().expect("render");
                 }
             }
@@ -112,19 +127,12 @@ impl ApplicationHandler for App {
             _ => {}
         }
     }
-}
 
-impl App {
-    fn set_pixel(&mut self, x: i32, y: i32, rgba: [u8; 4]) {
-        if x < 0 || y < 0 {
-            return;
+    fn about_to_wait(&mut self, _el: &ActiveEventLoop) {
+        // Ask all windows to redraw continuously (or schedule selectively if you prefer)
+        for win in WINDOWS.get().unwrap().lock().values() {
+            win.request_redraw();
         }
-        let (x, y) = (x as u32, y as u32);
-        if x >= BUF_W || y >= BUF_H {
-            return;
-        }
-        let idx = ((y * BUF_W + x) * 4) as usize;
-        self.canvas[idx..idx + 4].copy_from_slice(&rgba);
     }
 }
 
