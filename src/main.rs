@@ -19,18 +19,25 @@ use pixels::{Error, Pixels, SurfaceTexture};
 
 //static WINDOWS: OnceCell<Mutex<HashMap<WindowId, Arc<Window>>>> = OnceCell::new();
 
-const  DEFOULT_W_H: (u32,u32) = (1920,1080);
+const DEFOULT_W_H: (u32,u32) = (1920,1080);
+const INITIAL_COLOR: [u8;4] = [0,0,0,255];
 
 struct BufferState {
     buffer_width: u32,
     buffer_hight: u32,
+    current_buffer: Vec<u8>,
 }
 
 impl Default for BufferState {
     fn default() -> Self {
+        let mut empty_buffer: Vec<u8> = Vec::new();
+        for i in 0..DEFOULT_W_H.0*DEFOULT_W_H.1{
+            empty_buffer.extend(INITIAL_COLOR);
+        }
         Self {
             buffer_width: DEFOULT_W_H.0,
             buffer_hight: DEFOULT_W_H.1,
+            current_buffer: empty_buffer, // [Value,number of]
         }
     }
 }
@@ -44,8 +51,7 @@ struct WindowState {
 
 struct MainApp {//, W: wgpu::WindowHandle> {
     windows: HashMap<WindowId, WindowState>,
-    main_window_id: Option<WindowId>, // Moze poprostu adres [0] w vectorze jest już przypisany do głównego ekranu ?
-    //surface: Option<SurfaceTexture<W>>,
+    main_window_id: Option<WindowId>,
 }
 
 impl MainApp{
@@ -63,7 +69,10 @@ impl MainApp{
         let size = window.inner_size();
 
         let surface = SurfaceTexture::new(size.width, size.height, window.clone());
-        let pixels = Pixels::new(buffer_state.buffer_width, buffer_state.buffer_hight, surface).expect("create pixels");
+        let mut pixels = Pixels::new(buffer_state.buffer_width, buffer_state.buffer_hight, surface).expect("create pixels");
+
+        let pixel_frame = pixels.frame_mut();
+        pixel_frame.copy_from_slice(&buffer_state.current_buffer);
 
         self.windows.insert(id, WindowState { window, pixels, buffer_state });
         id
