@@ -6,7 +6,7 @@ use parking_lot::{Mutex};//, Once};
 mod prime_calc;
 mod primes_display;
 
-use winit::dpi::{LogicalSize, PhysicalPosition};
+use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition};
 use winit::event_loop::{ActiveEventLoop, EventLoop, ControlFlow};
 use winit::application::ApplicationHandler;
 use winit::raw_window_handle::HasDisplayHandle;
@@ -21,6 +21,7 @@ use pixels::{Error, Pixels, SurfaceTexture};
 
 const DEFOULT_W_H: (u32,u32) = (1920,1080);
 const INITIAL_COLOR: [u8;4] = [0,0,0,255];
+const CHANGE_COLOR: [u8;4] = [255,255,255,255];
 
 struct BufferState {
     buffer_width: u32,
@@ -51,7 +52,9 @@ struct WindowState {
 
 struct CursorState {
     physical_position: PhysicalPosition<f64>,
+    logical_position: LogicalPosition<f64>,
     state: ElementState,
+    window_presence: MouseInWindow,
 }
 
 impl CursorState {
@@ -61,9 +64,17 @@ impl Default for CursorState {
     fn default() -> Self {
         Self {
             physical_position: PhysicalPosition{ x: 0.0, y: 0.0 },
+            logical_position: LogicalPosition{ x: 0.0, y: 0.0 },
             state: ElementState::Released,
+            window_presence: MouseInWindow::Inside,
         }
     }
+}
+
+#[derive(PartialEq)]
+enum MouseInWindow {
+    Inside,
+    Outside,
 }
 
 struct MainApp {//, W: wgpu::WindowHandle> {
@@ -94,6 +105,17 @@ impl MainApp{
 
         self.windows.insert(id, WindowState { window, pixels, buffer_state });
         id
+    }
+
+    fn set_color( buffer: &Vec<u8>, index: usize, color: (u8,u8,u8,u8) ) -> Vec<u8> {
+
+        let mut result = buffer.clone();
+        result[index] = color.0;
+        result[index+1] = color.1;
+        result[index+2] = color.2;
+        result[index+3] = color.3;
+
+        result
     }
 }
 
@@ -168,21 +190,42 @@ impl ApplicationHandler for MainApp {
                 // You only need to call this if you've determined that you need to redraw in
                 // applications which do not always need to. Applications that redraw continuously
                 // can render here instead.
+                println!("Redraw Request!!!");
                 self.windows.get(&window_id).as_ref().unwrap().pixels.render().expect("Rendering error");
             },
             WindowEvent::MouseInput { device_id, state, button } => {
                 self.cursor.state = state;
-                
+
+                if (self.cursor.state == ElementState::Pressed) && (self.cursor.window_presence == MouseInWindow::Inside) {
+                    println!("We do change of color!!!!");
+
+                    let index_based_on_mouse_position = (self.cursor.physical_position.x+self.cursor.physical_position.y*(self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.buffer_width as f64)) as usize;
+
+                    let new_buffer = MainApp::set_color(&self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.current_buffer, index_based_on_mouse_position, (CHANGE_COLOR[0],CHANGE_COLOR[1],CHANGE_COLOR[2],CHANGE_COLOR[3])); 
+                    
+                    let pixel_frame = self.windows.get_mut(&self.main_window_id.unwrap()).unwrap().pixels.frame_mut();
+                    pixel_frame.copy_from_slice(&new_buffer);
+
+                     self.windows.get_mut(&window_id).as_mut().unwrap().buffer_state.current_buffer = new_buffer;
+
+                    self.windows.get(&window_id).as_ref().unwrap().pixels.render().expect("Rendering error");
+                }
+
                 println!("Device {:?} has button {:?} change state to: {:?}", device_id, button, state);
             },
             WindowEvent::CursorEntered { device_id } => {
+                self.cursor.window_presence = MouseInWindow::Inside;
                 println!("Device {:?} has entered window {:?}.", device_id, window_id);
             },
             WindowEvent::CursorLeft { device_id } => {
+                self.cursor.window_presence = MouseInWindow::Outside;
                 println!("Device {:?} has left window {:?}.", device_id, window_id);
             },
             WindowEvent::CursorMoved{ device_id, position } => {
                 self.cursor.physical_position = position;
+                if ( self.cursor.state == ElementState::Pressed ){
+
+                }
 
                 println!("Device {:?} moved to postion: {:?} in screen id:{:?}", device_id, position, window_id);
             },
@@ -196,10 +239,10 @@ impl ApplicationHandler for MainApp {
 
 fn main() {
 
-    let mut prime_calculation = prime_calc::primes::PrimesCalcSettings::init(2, 10000, 300);
-
-    prime_calculation.start_calc();
-    prime_calculation.results.calculate_distances();
+    //let mut prime_calculation = prime_calc::primes::PrimesCalcSettings::init(2, 10000, 300);
+//
+    //prime_calculation.start_calc();
+    //prime_calculation.results.calculate_distances();
 
     let event_loop = EventLoop::new().unwrap();
 
