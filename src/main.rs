@@ -6,12 +6,12 @@ use parking_lot::{Mutex};//, Once};
 mod prime_calc;
 mod primes_display;
 
-use winit::dpi::LogicalSize;
+use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event_loop::{ActiveEventLoop, EventLoop, ControlFlow};
 use winit::application::ApplicationHandler;
 use winit::raw_window_handle::HasDisplayHandle;
 use winit::window::{Window, WindowId};
-use winit::event::WindowEvent;
+use winit::event::{WindowEvent,ElementState};
 use wgpu;
 
 use pixels::{Error, Pixels, SurfaceTexture};
@@ -49,9 +49,27 @@ struct WindowState {
     // We need to create a constructor for this
 }
 
+struct CursorState {
+    physical_position: PhysicalPosition<f64>,
+    state: ElementState,
+}
+
+impl CursorState {
+}
+
+impl Default for CursorState {
+    fn default() -> Self {
+        Self {
+            physical_position: PhysicalPosition{ x: 0.0, y: 0.0 },
+            state: ElementState::Released,
+        }
+    }
+}
+
 struct MainApp {//, W: wgpu::WindowHandle> {
     windows: HashMap<WindowId, WindowState>,
     main_window_id: Option<WindowId>,
+    cursor: CursorState, 
 }
 
 impl MainApp{
@@ -85,6 +103,7 @@ impl Default for MainApp {
         Self {
             windows: HashMap::new(),
             main_window_id: None,
+            cursor: CursorState::default(),
         }
     }
 }
@@ -152,6 +171,8 @@ impl ApplicationHandler for MainApp {
                 self.windows.get(&window_id).as_ref().unwrap().pixels.render().expect("Rendering error");
             },
             WindowEvent::MouseInput { device_id, state, button } => {
+                self.cursor.state = state;
+                
                 println!("Device {:?} has button {:?} change state to: {:?}", device_id, button, state);
             },
             WindowEvent::CursorEntered { device_id } => {
@@ -161,9 +182,13 @@ impl ApplicationHandler for MainApp {
                 println!("Device {:?} has left window {:?}.", device_id, window_id);
             },
             WindowEvent::CursorMoved{ device_id, position } => {
+                self.cursor.physical_position = position;
+
                 println!("Device {:?} moved to postion: {:?} in screen id:{:?}", device_id, position, window_id);
             },
-            _ => (),
+            window_event => {
+                println!("Not used WindowEvent happend: {:?}", window_event);
+            },
         }
     }
 }
