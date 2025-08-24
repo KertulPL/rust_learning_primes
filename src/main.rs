@@ -200,7 +200,7 @@ impl ApplicationHandler for MainApp {
                     println!("We do change of color!!!!");
 
                     let index_based_on_mouse_position = (self.cursor.physical_position.x+self.cursor.physical_position.y*(self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.buffer_width as f64)) as usize;
-
+                    println!( "Index based on calculation:{}", index_based_on_mouse_position );
                     let new_buffer = MainApp::set_color(&self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.current_buffer, index_based_on_mouse_position, (CHANGE_COLOR[0],CHANGE_COLOR[1],CHANGE_COLOR[2],CHANGE_COLOR[3])); 
                     
                     let pixel_frame = self.windows.get_mut(&self.main_window_id.unwrap()).unwrap().pixels.frame_mut();
