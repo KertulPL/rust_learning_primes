@@ -109,6 +109,8 @@ impl MainApp{
 
     fn set_color( buffer: &Vec<u8>, index: usize, color: (u8,u8,u8,u8) ) -> Vec<u8> {
 
+        println!("The buffer size is: {}", buffer.len() );
+
         let mut result = buffer.clone();
         result[index] = color.0;
         result[index+1] = color.1;
@@ -197,9 +199,10 @@ impl ApplicationHandler for MainApp {
                 self.cursor.state = state;
 
                 if (self.cursor.state == ElementState::Pressed) && (self.cursor.window_presence == MouseInWindow::Inside) {
-                    println!("We do change of color!!!!");
 
-                    let index_based_on_mouse_position = (self.cursor.physical_position.x+self.cursor.physical_position.y*(self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.buffer_width as f64)) as usize;
+                    //println!("Incoming variables: x - {} , y - {} , width - {}", self.cursor.physical_position.x, self.cursor.physical_position.y, self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.buffer_width);
+                    
+                    let index_based_on_mouse_position = ((self.cursor.physical_position.x+self.cursor.physical_position.y*(self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.buffer_width as f64)) as usize)*4;
                     println!( "Index based on calculation:{}", index_based_on_mouse_position );
                     let new_buffer = MainApp::set_color(&self.windows.get(&self.main_window_id.unwrap()).unwrap().buffer_state.current_buffer, index_based_on_mouse_position, (CHANGE_COLOR[0],CHANGE_COLOR[1],CHANGE_COLOR[2],CHANGE_COLOR[3])); 
                     
