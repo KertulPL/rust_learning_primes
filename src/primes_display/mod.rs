@@ -1,1 +1,1 @@
-pub mod main_display;
+pub mod main_display_setup;
